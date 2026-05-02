@@ -179,15 +179,15 @@
         }
 
         .well-name {
-            font-size: 9px;
+            font-size: 11px;
             font-weight: 600;
             text-align: center;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            padding: 1px;
+            padding: 2px;
             color: #333;
-            display: none;
+            display: block;
         }
 
         td:hover .well-name {
@@ -205,9 +205,11 @@
 
         .plate-wrapper {
             display: inline-block;
-            padding: 10mm;
+            padding: 15mm;
             background: white;
             min-width: fit-content;
+            transform: scale(1.3);
+            transform-origin: top left;
         }
 
         .plate-title {
@@ -223,24 +225,25 @@
         }
 
         th {
-            padding: 4px;
+            padding: 6px;
             border: 0.5px solid #333;
             background: #f0f0f0;
-            font-size: 10px;
+            font-size: 12px;
             font-weight: 600;
             color: #333;
-            width: 24px;
-            height: 24px;
+            width: 50px;
+            height: 50px;
             text-align: center;
         }
 
         td {
-            width: 24px;
-            height: 24px;
+            width: 50px;
+            height: 50px;
             padding: 0;
             border: 0.5px solid #333;
             cursor: pointer;
             transition: all 0.1s;
+            position: relative;
         }
 
         td:hover {
@@ -356,7 +359,7 @@
             </div>
 
             <div class="info-box">
-                <strong>How to use:</strong> Select a sample type, click wells to assign them. Use "Save as PDF" to download, "Print" for printing, or "Export TXT" for data.
+                <strong>How to use:</strong> Click on a well to add it to a group. Type any group name you want (e.g., "Control", "Hen 5", "High Dose"). Each group gets its own color automatically!
             </div>
         </header>
 
@@ -373,41 +376,6 @@
                     </thead>
                     <tbody id="plateBody"></tbody>
                 </table>
-
-                <div class="legend">
-                    <div class="legend-item">
-                        <div class="legend-color" style="background: #E8E6F0;"></div>
-                        <span>Empty</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-color" style="background: #7F77DD;"></div>
-                        <span>Control</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-color" style="background: #1D9E75;"></div>
-                        <span>Treatment 1</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-color" style="background: #D85A30;"></div>
-                        <span>Treatment 2</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-color" style="background: #D4537E;"></div>
-                        <span>Treatment 3</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-color" style="background: #888780;"></div>
-                        <span>Blank</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-color" style="background: #378ADD;"></div>
-                        <span>Standard</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-color" style="background: #639922;"></div>
-                        <span>QC</span>
-                    </div>
-                </div>
             </div>
         </div>
     </div>
@@ -418,20 +386,11 @@
         <div class="modal-content">
             <div class="modal-header">Edit Well: <span id="wellId"></span></div>
             <div class="modal-body">
-                <label for="sampleTypeModal">Sample type:</label>
-                <select id="sampleTypeModal" style="width: 100%; padding: 8px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 4px;">
-                    <option value="none">— None —</option>
-                    <option value="control">Control</option>
-                    <option value="treatment1">Treatment 1</option>
-                    <option value="treatment2">Treatment 2</option>
-                    <option value="treatment3">Treatment 3</option>
-                    <option value="blank">Blank</option>
-                    <option value="standard">Standard</option>
-                    <option value="qc">QC</option>
-                </select>
+                <label for="groupNameInput">Group name:</label>
+                <input type="text" id="groupNameInput" placeholder="e.g., Control, Hen 5, High Dose" maxlength="15">
                 
-                <label for="wellNameInput">Well name (optional):</label>
-                <input type="text" id="wellNameInput" placeholder="e.g., Sample A, Hen 5, Control 1" maxlength="20">
+                <label for="wellNameInput" style="margin-top: 15px;">Well name (optional):</label>
+                <input type="text" id="wellNameInput" placeholder="e.g., Sample A, Replicate 1" maxlength="20">
             </div>
             <div class="modal-footer">
                 <button onclick="closeWellModal()">Cancel</button>

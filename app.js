@@ -33,35 +33,33 @@ window.addEventListener('appinstalled', () => {
     installPrompt.classList.remove('show');
 });
 
-// Plate planner logic
+// Color palette for groups
+const colorPalette = [
+    '#7F77DD', // Purple
+    '#1D9E75', // Green
+    '#D85A30', // Orange
+    '#D4537E', // Pink
+    '#378ADD', // Blue
+    '#639922', // Olive
+    '#FF6B6B', // Red
+    '#4ECDC4', // Teal
+    '#FFE66D', // Yellow
+    '#95E1D3', // Mint
+    '#F38181', // Coral
+    '#AA96DA', // Lavender
+    '#FCBAD3', // Light Pink
+    '#A8D8EA', // Light Blue
+    '#FF9671', // Peach
+];
+
 const rows = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 const cols = 12;
 
-const colorMap = {
-    none: '#E8E6F0',
-    control: '#7F77DD',
-    treatment1: '#1D9E75',
-    treatment2: '#D85A30',
-    treatment3: '#D4537E',
-    blank: '#888780',
-    standard: '#378ADD',
-    qc: '#639922'
-};
-
-const labelMap = {
-    none: 'Empty',
-    control: 'Control',
-    treatment1: 'Treatment 1',
-    treatment2: 'Treatment 2',
-    treatment3: 'Treatment 3',
-    blank: 'Blank',
-    standard: 'Standard',
-    qc: 'QC'
-};
-
-const plateData = {};
-const wellNames = {};
+const plateData = {}; // stores group names
+const wellNames = {}; // stores well labels
+const groupColors = {}; // stores assigned colors for each group
 let currentWell = null;
+let colorIndex = 0; // track next color to assign
 
 // Initialize plate on page load
 document.addEventListener('DOMContentLoaded', () => {
@@ -80,10 +78,10 @@ function initPlate() {
         for (let col = 1; col <= cols; col++) {
             const td = document.createElement('td');
             const wellId = `${row}${col}`;
-            plateData[wellId] = 'none';
+            plateData[wellId] = ''; // empty string for no group
             wellNames[wellId] = '';
             td.id = wellId;
-            td.style.background = colorMap.none;
+            td.style.background = '#E8E6F0'; // light gray for empty
             td.title = wellId;
             td.style.position = 'relative';
             td.innerHTML = '<div class="well-name"></div>';
@@ -94,12 +92,29 @@ function initPlate() {
     });
 }
 
+function getColorForGroup(groupName) {
+    if (!groupName || groupName.trim() === '') {
+        return '#E8E6F0'; // empty/light gray
+    }
+    
+    if (groupColors[groupName]) {
+        return groupColors[groupName];
+    }
+    
+    // Assign new color
+    const color = colorPalette[colorIndex % colorPalette.length];
+    groupColors[groupName] = color;
+    colorIndex++;
+    return color;
+}
+
 function openWellModal(wellId) {
     currentWell = wellId;
     document.getElementById('wellId').textContent = wellId;
-    document.getElementById('sampleTypeModal').value = plateData[wellId];
+    document.getElementById('groupNameInput').value = plateData[wellId] || '';
     document.getElementById('wellNameInput').value = wellNames[wellId] || '';
     document.getElementById('wellModal').classList.add('show');
+    document.getElementById('groupNameInput').focus();
 }
 
 function closeWellModal() {
@@ -110,15 +125,16 @@ function closeWellModal() {
 function saveWellData() {
     if (!currentWell) return;
     
-    const sampleType = document.getElementById('sampleTypeModal').value;
+    const groupName = document.getElementById('groupNameInput').value;
     const wellName = document.getElementById('wellNameInput').value;
     
-    plateData[currentWell] = sampleType;
+    plateData[currentWell] = groupName;
     wellNames[currentWell] = wellName;
     
     // Update the visual
     const td = document.getElementById(currentWell);
-    td.style.background = colorMap[sampleType];
+    const color = getColorForGroup(groupName);
+    td.style.background = color;
     
     // Update well name display
     const nameDiv = td.querySelector('.well-name');
@@ -141,14 +157,16 @@ function clearPlate() {
         rows.forEach(row => {
             for (let col = 1; col <= cols; col++) {
                 const wellId = `${row}${col}`;
-                plateData[wellId] = 'none';
+                plateData[wellId] = '';
                 wellNames[wellId] = '';
                 const td = document.getElementById(wellId);
-                td.style.background = colorMap.none;
+                td.style.background = '#E8E6F0';
                 const nameDiv = td.querySelector('.well-name');
                 nameDiv.textContent = '';
             }
         });
+        groupColors = {};
+        colorIndex = 0;
         savePlateToStorage();
     }
 }
@@ -160,24 +178,24 @@ function downloadLayout() {
     rows.forEach(row => {
         for (let col = 1; col <= cols; col++) {
             const wellId = `${row}${col}`;
-            const sampleType = plateData[wellId];
+            const groupName = plateData[wellId];
             const wellName = wellNames[wellId];
             
-            if (sampleType !== 'none') {
+            if (groupName && groupName.trim() !== '') {
                 if (wellName) {
-                    textContent += `${wellId} (${wellName}): ${labelMap[sampleType]}\n`;
+                    textContent += `${wellId} (${wellName}): ${groupName}\n`;
                 } else {
-                    textContent += `${wellId}: ${labelMap[sampleType]}\n`;
+                    textContent += `${wellId}: ${groupName}\n`;
                 }
             }
         }
     });
     
-    textContent += '\n\nExport Summary:\n';
+    textContent += '\n\nGroup Summary:\n';
     const summary = getSummary();
-    Object.entries(summary).forEach(([type, count]) => {
-        if (count > 0) {
-            textContent += `${labelMap[type]}: ${count} wells\n`;
+    Object.entries(summary).forEach(([groupName, count]) => {
+        if (groupName.trim() !== '') {
+            textContent += `${groupName}: ${count} wells\n`;
         }
     });
     
@@ -205,22 +223,15 @@ function printPDF() {
 }
 
 function getSummary() {
-    const summary = {
-        none: 0,
-        control: 0,
-        treatment1: 0,
-        treatment2: 0,
-        treatment3: 0,
-        blank: 0,
-        standard: 0,
-        qc: 0
-    };
+    const summary = {};
     
     rows.forEach(row => {
         for (let col = 1; col <= cols; col++) {
             const wellId = `${row}${col}`;
-            const sampleType = plateData[wellId];
-            summary[sampleType]++;
+            const groupName = plateData[wellId];
+            if (groupName && groupName.trim() !== '') {
+                summary[groupName] = (summary[groupName] || 0) + 1;
+            }
         }
     });
     
@@ -232,6 +243,8 @@ function savePlateToStorage() {
     try {
         localStorage.setItem('plateData', JSON.stringify(plateData));
         localStorage.setItem('wellNames', JSON.stringify(wellNames));
+        localStorage.setItem('groupColors', JSON.stringify(groupColors));
+        localStorage.setItem('colorIndex', colorIndex.toString());
     } catch (e) {
         console.log('Could not save to localStorage:', e);
     }
@@ -241,6 +254,8 @@ function loadPlateFromStorage() {
     try {
         const savedPlate = localStorage.getItem('plateData');
         const savedNames = localStorage.getItem('wellNames');
+        const savedColors = localStorage.getItem('groupColors');
+        const savedColorIndex = localStorage.getItem('colorIndex');
         
         if (savedPlate) {
             const loadedData = JSON.parse(savedPlate);
@@ -250,7 +265,8 @@ function loadPlateFromStorage() {
                     if (loadedData[wellId]) {
                         plateData[wellId] = loadedData[wellId];
                         const td = document.getElementById(wellId);
-                        td.style.background = colorMap[loadedData[wellId]];
+                        const color = getColorForGroup(loadedData[wellId]);
+                        td.style.background = color;
                     }
                 }
             });
@@ -269,6 +285,14 @@ function loadPlateFromStorage() {
                     }
                 }
             });
+        }
+        
+        if (savedColors) {
+            Object.assign(groupColors, JSON.parse(savedColors));
+        }
+        
+        if (savedColorIndex) {
+            colorIndex = parseInt(savedColorIndex);
         }
     } catch (e) {
         console.log('Could not load from localStorage:', e);
