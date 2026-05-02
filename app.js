@@ -60,6 +60,8 @@ const labelMap = {
 };
 
 const plateData = {};
+const wellNames = {};
+let currentWell = null;
 
 // Initialize plate on page load
 document.addEventListener('DOMContentLoaded', () => {
@@ -79,29 +81,59 @@ function initPlate() {
             const td = document.createElement('td');
             const wellId = `${row}${col}`;
             plateData[wellId] = 'none';
+            wellNames[wellId] = '';
             td.id = wellId;
             td.style.background = colorMap.none;
             td.title = wellId;
-            td.addEventListener('click', () => toggleWell(wellId));
+            td.style.position = 'relative';
+            td.innerHTML = '<div class="well-name"></div>';
+            td.addEventListener('click', () => openWellModal(wellId));
             tr.appendChild(td);
         }
         tbody.appendChild(tr);
     });
 }
 
-function toggleWell(wellId) {
-    const sampleType = document.getElementById('sampleType').value;
-    if (sampleType === 'none') return;
+function openWellModal(wellId) {
+    currentWell = wellId;
+    document.getElementById('wellId').textContent = wellId;
+    document.getElementById('sampleTypeModal').value = plateData[wellId];
+    document.getElementById('wellNameInput').value = wellNames[wellId] || '';
+    document.getElementById('wellModal').classList.add('show');
+}
+
+function closeWellModal() {
+    document.getElementById('wellModal').classList.remove('show');
+    currentWell = null;
+}
+
+function saveWellData() {
+    if (!currentWell) return;
     
-    const td = document.getElementById(wellId);
-    if (plateData[wellId] === sampleType) {
-        plateData[wellId] = 'none';
-        td.style.background = colorMap.none;
-    } else {
-        plateData[wellId] = sampleType;
-        td.style.background = colorMap[sampleType];
-    }
+    const sampleType = document.getElementById('sampleTypeModal').value;
+    const wellName = document.getElementById('wellNameInput').value;
+    
+    plateData[currentWell] = sampleType;
+    wellNames[currentWell] = wellName;
+    
+    // Update the visual
+    const td = document.getElementById(currentWell);
+    td.style.background = colorMap[sampleType];
+    
+    // Update well name display
+    const nameDiv = td.querySelector('.well-name');
+    nameDiv.textContent = wellName || '';
+    
     savePlateToStorage();
+    closeWellModal();
+}
+
+// Close modal when clicking outside of it
+window.onclick = function(event) {
+    const modal = document.getElementById('wellModal');
+    if (event.target === modal) {
+        closeWellModal();
+    }
 }
 
 function clearPlate() {
@@ -110,8 +142,11 @@ function clearPlate() {
             for (let col = 1; col <= cols; col++) {
                 const wellId = `${row}${col}`;
                 plateData[wellId] = 'none';
+                wellNames[wellId] = '';
                 const td = document.getElementById(wellId);
                 td.style.background = colorMap.none;
+                const nameDiv = td.querySelector('.well-name');
+                nameDiv.textContent = '';
             }
         });
         savePlateToStorage();
@@ -126,8 +161,14 @@ function downloadLayout() {
         for (let col = 1; col <= cols; col++) {
             const wellId = `${row}${col}`;
             const sampleType = plateData[wellId];
+            const wellName = wellNames[wellId];
+            
             if (sampleType !== 'none') {
-                textContent += `${wellId}: ${labelMap[sampleType]}\n`;
+                if (wellName) {
+                    textContent += `${wellId} (${wellName}): ${labelMap[sampleType]}\n`;
+                } else {
+                    textContent += `${wellId}: ${labelMap[sampleType]}\n`;
+                }
             }
         }
     });
@@ -190,6 +231,7 @@ function getSummary() {
 function savePlateToStorage() {
     try {
         localStorage.setItem('plateData', JSON.stringify(plateData));
+        localStorage.setItem('wellNames', JSON.stringify(wellNames));
     } catch (e) {
         console.log('Could not save to localStorage:', e);
     }
@@ -197,9 +239,11 @@ function savePlateToStorage() {
 
 function loadPlateFromStorage() {
     try {
-        const saved = localStorage.getItem('plateData');
-        if (saved) {
-            const loadedData = JSON.parse(saved);
+        const savedPlate = localStorage.getItem('plateData');
+        const savedNames = localStorage.getItem('wellNames');
+        
+        if (savedPlate) {
+            const loadedData = JSON.parse(savedPlate);
             rows.forEach(row => {
                 for (let col = 1; col <= cols; col++) {
                     const wellId = `${row}${col}`;
@@ -207,6 +251,21 @@ function loadPlateFromStorage() {
                         plateData[wellId] = loadedData[wellId];
                         const td = document.getElementById(wellId);
                         td.style.background = colorMap[loadedData[wellId]];
+                    }
+                }
+            });
+        }
+        
+        if (savedNames) {
+            const loadedNames = JSON.parse(savedNames);
+            rows.forEach(row => {
+                for (let col = 1; col <= cols; col++) {
+                    const wellId = `${row}${col}`;
+                    if (loadedNames[wellId]) {
+                        wellNames[wellId] = loadedNames[wellId];
+                        const td = document.getElementById(wellId);
+                        const nameDiv = td.querySelector('.well-name');
+                        nameDiv.textContent = loadedNames[wellId];
                     }
                 }
             });
